@@ -6,6 +6,7 @@ petsc4py.init(sys.argv)
 
 from mpi4py import MPI   # mora biti iza inicijalizacije 
 from petsc4py import PETSc
+import matplotlib.pyplot as plt
 
 opts = PETSc.Options()
 N = opts.getInt('-NX', 10)
@@ -73,6 +74,24 @@ A.setValues(
     PETSc.InsertMode.INSERT_VALUES
 )
 
+for i in range(1, N):
+    A.setValues(i*(N+1), i*(N+1), 1.0, PETSc.InsertMode.INSERT_VALUES)
+    A.setValues(i*(N+1)+N, i*(N+1)+N, 1.0, PETSc.InsertMode.INSERT_VALUES)
+    for j in range(1, N):
+        row = i*(N+1) + j
+        A.setValues( 
+            row, [row - (N+1), row - 1, row, row + 1, row + (N+1)],
+            [c, b, a, b, c],
+            PETSc.InsertMode.INSERT_VALUES
+        )
 A.assemble()
-viewer = PETSc.Viewer().createASCII('matrix_output.txt', comm=PETSc.COMM_WORLD)
+viewer = PETSc.Viewer().createASCII('matricaSustava.txt', comm=PETSc.COMM_WORLD)
 A.view(viewer)
+
+ksp = PETSc.KSP().create(comm)
+ksp.setOperators(A)
+ksp.setTolerances(1e-9,PETSc.CURRENT,PETSc.CURRENT, 1000)
+ksp.setFromOptions()
+
+ksp.solve(b, x)
+
