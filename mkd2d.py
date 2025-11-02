@@ -21,10 +21,10 @@ y_points = np.linspace(0, 1, N+1)
 # ---------------------------
 # Definicija egzaktog rješenja i desne strane
 def exact(x, y):
-    return x**2 + y**2
+    return np.pow(x,3) 
 
 def f(x,y):
-    return -4.0
+    return -6*x
 
 def g(x,y):
     return exact(x,y)
@@ -110,7 +110,9 @@ ksp.solve(b, x)
 # ---------------------------
 # Izračun greške i ispis rezultata
 approximation = np.array(x.getArray()).reshape((N+1, N+1))
-exact_solution = np.array([[exact(i, j) for j in y_points] for i in x_points])
+X, Y = np.meshgrid(x_points, y_points, indexing='xy')
+exact_solution = exact(X, Y)
+
 
 error = np.linalg.norm(approximation - exact_solution, ord=np.inf)
 print(f"Maksimalna greška u sup normi: {error}")
