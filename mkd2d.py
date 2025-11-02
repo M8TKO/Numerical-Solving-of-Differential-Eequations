@@ -21,10 +21,10 @@ y_points = np.linspace(0, 1, N+1)
 # ---------------------------
 # Definicija egzaktog rješenja i desne strane
 def exact(x, y):
-    return np.pow(x,3) 
+    return np.pow(x,3) + np.power(y,3)
 
 def f(x,y):
-    return -6*x
+    return -6*x - 6*y
 
 def g(x,y):
     return exact(x,y)
