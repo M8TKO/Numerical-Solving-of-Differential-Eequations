@@ -4,7 +4,7 @@ import sys
 
 petsc4py.init(sys.argv)
 
-from mpi4py import MPI   # mora biti iza inicijalizacije 
+from mpi4py import MPI   
 from petsc4py import PETSc
 import matplotlib.pyplot as plt
 
@@ -104,22 +104,27 @@ ksp.solve(b, x)
 approximation = np.array(x.getArray()).reshape((N+1, N+1))
 exact_solution = np.array([[exact(i*h, j*h) for j in range(N+1)] for i in range(N+1)])
 
+error = np.linalg.norm(approximation - exact_solution, ord=np.inf)
+print(f"Maximum error (infinity norm): {error}")
+
 X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1))
 
 plt.figure(figsize=(12, 6))
 plt.subplot(1, 2, 1)
 plt.contourf(X, Y, exact_solution, cmap='viridis')
 plt.colorbar()
-plt.title('Exact Solution')
+plt.title('Egzaktno rješenje')
 plt.xlabel('x')
 plt.ylabel('y')
 
 plt.subplot(1, 2, 2)
 plt.contourf(X, Y, approximation, cmap='viridis')
 plt.colorbar()
-plt.title('Approximation')
+plt.title('Aproksimacija rješenja')
 plt.xlabel('x')
 plt.ylabel('y')
 
 plt.tight_layout()
 plt.show()
+
+# ---------------------------
