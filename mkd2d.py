@@ -1,3 +1,4 @@
+# Dodavanje potrebnih biblioteka
 import petsc4py 
 import numpy as np
 import sys
@@ -10,6 +11,7 @@ import matplotlib.pyplot as plt
 
 opts = PETSc.Options()
 N = opts.getInt('-NX', 10)
+comm = MPI.COMM_WORLD
 # N je broj ćelija mreže u smjeru x i y
 # Broj vrhova mreže je N+1
 h = 1.0 / N
@@ -17,22 +19,17 @@ h = 1.0 / N
 x_points = np.linspace(0, 1, N+1)
 y_points = np.linspace(0, 1, N+1)
 # ---------------------------
-
+# Definicija egzaktog rješenja i desne strane
 def exact(x, y):
-    return np.sin(np.pi*x) * np.sin(np.pi*y)
+    return x**2 + y**2
 
 def f(x,y):
-    return 2.0 * np.pi**2 * np.sin(np.pi*x) * np.sin(np.pi*y)
+    return -4.0
 
 def g(x,y):
-    return (x+y)*0.0  
-
-def print_matrix(matrix):
-    for row in matrix:
-        print(" ".join(f"{value:10.4f}" for value in row))
+    return exact(x,y)
 # ---------------------------
 # Vektor rješenja
-comm = MPI.COMM_WORLD
 x = PETSc.Vec().create(comm)
 x.setSizes([PETSc.DECIDE, (N+1)**2])
 x.setFromOptions()
@@ -40,32 +37,38 @@ x.setFromOptions()
 # ---------------------------
 # Vektor desne strane
 b = x.duplicate()
+
+# Rubni uvjeti na y = 0 i y = 1
 downEdge = g(x_points[0:N+1], np.repeat(y_points[0], N+1))  
 upperEdge = g(x_points[0:N+1], np.repeat(y_points[N], N+1))
 b.setValues(np.arange(N+1,dtype=np.int32), downEdge, PETSc.InsertMode.INSERT_VALUES)
 b.setValues( np.arange((N+1)**2-1-N, (N+1)**2, dtype=np.int32), upperEdge, PETSc.InsertMode.INSERT_VALUES)
-# Documentation: https://numpy.org/doc/2.3/reference/generated/numpy.arange.html 
+
+# Rubni uvjeti na x = 0 i x = 1
+    # Vrijednosti G_k
 for i in range(1, N):
     leftEdge = g(0, y_points[i])
     rightEdge = g(1, y_points[i])
     b.setValue(i*(N+1), leftEdge, PETSc.InsertMode.INSERT_VALUES)
     b.setValue(i*(N+1)+N, rightEdge, PETSc.InsertMode.INSERT_VALUES)
-
+    # Vrijednosti F_k
 for i in range(1, N):
     for j in range(1, N):
         rhs_value = f(x_points[j], y_points[i])
         row = i*(N+1) + j
         b.setValue(row, rhs_value, PETSc.InsertMode.INSERT_VALUES)
 b.assemble()
-b.view()
 # ---------------------------
 # Matrica sustava
 A = PETSc.Mat().create(comm)
 A.setSizes((N+1)**2)
+# Brojevi a,b,c kao iz skripte, b je već definiran kao vektor 
+# pa koristimo drugi naziv b_float
 a = 4 / (h**2) # h_x = h_y = h
 b_float = -1 / (h**2)
 c = -1 / (h**2)
 
+# Prvi blok je jednak jediničnoj matrici
 A.setValues( 
     np.arange(N+1,dtype=np.int32), 
     np.arange(N+1,dtype=np.int32),  
@@ -73,6 +76,7 @@ A.setValues(
     PETSc.InsertMode.INSERT_VALUES
 )  
 
+# Zadnji blok je jednak jediničnoj matrici
 A.setValues(
     np.arange((N+1)**2 - (N+1), (N+1)**2,dtype=np.int32), 
     np.arange((N+1)**2 - (N+1), (N+1)**2,dtype=np.int32), 
@@ -81,8 +85,10 @@ A.setValues(
 )
 
 for i in range(1, N):
+    # Jedinice na početku i kraju svakog dijagonalnog bloka
     A.setValues(i*(N+1), i*(N+1), 1.0, PETSc.InsertMode.INSERT_VALUES)
     A.setValues(i*(N+1)+N, i*(N+1)+N, 1.0, PETSc.InsertMode.INSERT_VALUES)
+    # Preostali elementi [c, b, a, b, c] u svakom retku
     for j in range(1, N):
         row = i*(N+1) + j
         A.setValues( 
@@ -91,9 +97,9 @@ for i in range(1, N):
             PETSc.InsertMode.INSERT_VALUES
         )
 A.assemble()
-viewer = PETSc.Viewer().createASCII('matricaSustava.txt', comm=PETSc.COMM_WORLD)
-A.view(viewer)
 
+# ---------------------------
+# Rješavanje sustava
 ksp = PETSc.KSP().create(comm)
 ksp.setOperators(A)
 ksp.setTolerances(1e-9,PETSc.CURRENT,PETSc.CURRENT, 1000)
@@ -101,24 +107,24 @@ ksp.setFromOptions()
 
 ksp.solve(b, x)
 
+# ---------------------------
+# Izračun greške i ispis rezultata
 approximation = np.array(x.getArray()).reshape((N+1, N+1))
-exact_solution = np.array([[exact(i*h, j*h) for j in range(N+1)] for i in range(N+1)])
+exact_solution = np.array([[exact(i, j) for j in y_points] for i in x_points])
 
 error = np.linalg.norm(approximation - exact_solution, ord=np.inf)
-print(f"Maximum error (infinity norm): {error}")
-
-X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1))
+print(f"Maksimalna greška u sup normi: {error}")
 
 plt.figure(figsize=(12, 6))
 plt.subplot(1, 2, 1)
-plt.contourf(X, Y, exact_solution, cmap='viridis')
+plt.contourf( x_points, y_points, exact_solution, cmap='viridis')
 plt.colorbar()
 plt.title('Egzaktno rješenje')
 plt.xlabel('x')
 plt.ylabel('y')
 
 plt.subplot(1, 2, 2)
-plt.contourf(X, Y, approximation, cmap='viridis')
+plt.contourf( x_points, y_points, approximation, cmap='viridis')
 plt.colorbar()
 plt.title('Aproksimacija rješenja')
 plt.xlabel('x')
@@ -126,5 +132,3 @@ plt.ylabel('y')
 
 plt.tight_layout()
 plt.show()
-
-# ---------------------------
