@@ -26,6 +26,9 @@ def f(x,y):
 def g(x,y):
     return x + y#(x+y)*0.0  
 
+def print_matrix(matrix):
+    for row in matrix:
+        print(" ".join(f"{value:10.4f}" for value in row))
 # ---------------------------
 # Vektor rješenja
 comm = MPI.COMM_WORLD
@@ -51,4 +54,25 @@ b.assemble()
 # ---------------------------
 # Matrica sustava
 A = PETSc.Mat().create(comm)
-A.setSizes(((N+1)**2, (N+1)**2))
+A.setSizes((N+1)**2)
+a = 4 / (h**2) # h_x = h_y = h
+b = -1 / (h**2)
+c = -1 / (h**2)
+
+A.setValues( 
+    np.arange(N+1,dtype=np.int32), 
+    np.arange(N+1,dtype=np.int32),  
+    np.eye(N+1),
+    PETSc.InsertMode.INSERT_VALUES
+)  
+
+A.setValues(
+    np.arange((N+1)**2 - (N+1), (N+1)**2,dtype=np.int32), 
+    np.arange((N+1)**2 - (N+1), (N+1)**2,dtype=np.int32), 
+    np.eye(N+1),
+    PETSc.InsertMode.INSERT_VALUES
+)
+
+A.assemble()
+viewer = PETSc.Viewer().createASCII('matrix_output.txt', comm=PETSc.COMM_WORLD)
+A.view(viewer)
