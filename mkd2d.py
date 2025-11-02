@@ -25,7 +25,7 @@ def f(x,y):
     return 2.0 * np.pi**2 * np.sin(np.pi*x) * np.sin(np.pi*y)
 
 def g(x,y):
-    return x + y#(x+y)*0.0  
+    return (x+y)*0.0  
 
 def print_matrix(matrix):
     for row in matrix:
@@ -50,14 +50,20 @@ for i in range(1, N):
     rightEdge = g(1, y_points[i])
     b.setValue(i*(N+1), leftEdge, PETSc.InsertMode.INSERT_VALUES)
     b.setValue(i*(N+1)+N, rightEdge, PETSc.InsertMode.INSERT_VALUES)
-b.assemble()
 
+for i in range(1, N):
+    for j in range(1, N):
+        rhs_value = f(x_points[j], y_points[i])
+        row = i*(N+1) + j
+        b.setValue(row, rhs_value, PETSc.InsertMode.INSERT_VALUES)
+b.assemble()
+b.view()
 # ---------------------------
 # Matrica sustava
 A = PETSc.Mat().create(comm)
 A.setSizes((N+1)**2)
 a = 4 / (h**2) # h_x = h_y = h
-b = -1 / (h**2)
+b_float = -1 / (h**2)
 c = -1 / (h**2)
 
 A.setValues( 
@@ -81,7 +87,7 @@ for i in range(1, N):
         row = i*(N+1) + j
         A.setValues( 
             row, [row - (N+1), row - 1, row, row + 1, row + (N+1)],
-            [c, b, a, b, c],
+            [c, b_float, a, b_float, c],
             PETSc.InsertMode.INSERT_VALUES
         )
 A.assemble()
@@ -95,3 +101,25 @@ ksp.setFromOptions()
 
 ksp.solve(b, x)
 
+approximation = np.array(x.getArray()).reshape((N+1, N+1))
+exact_solution = np.array([[exact(i*h, j*h) for j in range(N+1)] for i in range(N+1)])
+
+X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1))
+
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.contourf(X, Y, exact_solution, cmap='viridis')
+plt.colorbar()
+plt.title('Exact Solution')
+plt.xlabel('x')
+plt.ylabel('y')
+
+plt.subplot(1, 2, 2)
+plt.contourf(X, Y, approximation, cmap='viridis')
+plt.colorbar()
+plt.title('Approximation')
+plt.xlabel('x')
+plt.ylabel('y')
+
+plt.tight_layout()
+plt.show()
