@@ -21,10 +21,10 @@ y_points = np.linspace(0, 1, N+1)
 # ---------------------------
 # Definicija egzaktog rješenja i desne strane
 def exact(x, y):
-    return np.pow(x,3) + np.power(y,3)
+    return np.sin(x) * np.cos(y)
 
 def f(x,y):
-    return -6*x - 6*y
+    return 2 * np.sin(x) * np.cos(y)
 
 def g(x,y):
     return exact(x,y)
@@ -37,7 +37,6 @@ x.setFromOptions()
 # ---------------------------
 # Vektor desne strane
 b = x.duplicate()
-
 # Rubni uvjeti na y = 0 i y = 1
 downEdge = g(x_points[0:N+1], np.repeat(y_points[0], N+1))  
 upperEdge = g(x_points[0:N+1], np.repeat(y_points[N], N+1))
@@ -102,7 +101,7 @@ A.assemble()
 # Rješavanje sustava
 ksp = PETSc.KSP().create(comm)
 ksp.setOperators(A)
-ksp.setTolerances(1e-9,PETSc.CURRENT,PETSc.CURRENT, 1000)
+ksp.setTolerances(1e-12,PETSc.CURRENT,PETSc.CURRENT, 1000)
 ksp.setFromOptions()
 
 ksp.solve(b, x)
@@ -110,12 +109,12 @@ ksp.solve(b, x)
 # ---------------------------
 # Izračun greške i ispis rezultata
 approximation = np.array(x.getArray()).reshape((N+1, N+1))
+
 X, Y = np.meshgrid(x_points, y_points, indexing='xy')
 exact_solution = exact(X, Y)
 
-
-error = np.linalg.norm(approximation - exact_solution, ord=np.inf)
-print(f"Maksimalna greška u sup normi: {error}")
+err_inf = np.max(np.abs(approximation - exact_solution))
+print(f"Maksimalna greška u sup normi: {err_inf}")
 
 plt.figure(figsize=(12, 6))
 plt.subplot(1, 2, 1)
