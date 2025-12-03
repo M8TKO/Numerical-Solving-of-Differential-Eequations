@@ -1,0 +1,1 @@
+- **Finite Difference Method**: This project solves the 2D Poisson equation on the unit square using a 5-point finite difference method. The linear system is assembled and solved in parallel with PETSc and MPI, and the result is compared against a known analytical solution. The script also computes the max-norm error and visualizes both the exact and numerical solutions.
