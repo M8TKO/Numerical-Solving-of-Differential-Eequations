@@ -127,7 +127,7 @@ plt.ylabel('y')
 plt.subplot(1, 2, 2)
 plt.contourf( x_points, y_points, approximation, cmap='viridis')
 plt.colorbar()
-plt.title('Aproksimacija rješenja')
+plt.title('Aproksimacija rješenja') 
 plt.xlabel('x')
 plt.ylabel('y')
 
