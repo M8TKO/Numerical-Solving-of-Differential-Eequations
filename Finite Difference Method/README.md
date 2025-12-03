@@ -58,3 +58,54 @@ Example installation (assuming PETSc and MPI are already installed on the system
 
 ```bash
 pip install numpy matplotlib mpi4py petsc petsc4py
+
+Here is an additional **Testing & Convergence Study** section you can append to your README:
+
+```markdown
+---
+
+## Convergence Testing
+
+The repository includes a helper script `test_convergence.sh` designed to check how the solution error behaves as the grid is refined.
+
+It runs the solver for multiple values of `NX` (number of cells per direction), extracts the maximum error from the output, and prints the error reduction ratio between successive resolutions.
+
+### Script location
+
+```
+
+test_convergence.sh
+
+````
+
+### Usage
+
+Make the script executable:
+
+```bash
+chmod +x test_convergence.sh
+````
+
+Run convergence test:
+
+```bash
+mpirun -n 4 ./test_convergence.sh
+```
+
+### What it does
+
+For a sequence of grid sizes (e.g., 25, 50, 100, 200):
+
+1. runs `mkd2d.py -NX <value>`
+2. extracts the printed max error
+3. compares consecutive errors by dividing:
+
+   ```
+   ratio = error(previous NX) / error(current NX)
+   ```
+
+For a **second-order** finite difference method, refining the grid by a factor of 2 should yield a ratio close to **4**.
+
+
+
+
